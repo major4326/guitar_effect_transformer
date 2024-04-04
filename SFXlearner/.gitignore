@@ -1,0 +1,16 @@
+__pycache__/
+data/
+legacy/
+test.model/
+.ipynb_checkpoints/
+.empty/
+dataset/generated/*
+dataset/clean/guitarset_5s
+dataset/clean/IDMT-SMT-GUITAR_5s
+lightning_logs/
+evaluation/
+*.swp
+.vscode/settings.json
+notebooks/
+scripts/exec_docker_bash.sh
+scripts/run_mir-aio.sh
