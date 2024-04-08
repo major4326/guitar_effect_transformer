@@ -3,7 +3,6 @@ from sklearn.preprocessing import label_binarize
 from sklearn.metrics import multilabel_confusion_matrix
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -50,8 +49,8 @@ def visualize_confusion_matrix(data, f1_scores):
 def visualize_loss(train_losses, validation_losses):
     plt.figure(figsize=(10, 6))  # Optionally set the figure size
     epochs = range(1, len(train_losses) + 1)
-    plt.plot(epochs, train_losses, label='Training Loss')
-    plt.plot(epochs, validation_losses, label='Validation Loss')
+    plt.plot(epochs, train_losses, label='Training Loss', color = 'mediumseagreen')
+    plt.plot(epochs, validation_losses, label='Validation Loss', color = 'cornflowerblue')
 
     # Add a title and labels to the axes.
     plt.title('Training and Validation Loss')
@@ -83,10 +82,10 @@ def benchmark(scores):
 
     plt.figure(figsize=(12, 8))
 
-    bars1 = plt.bar(r1, micro_F1_guitarSet10, color='b', width=barWidth, edgecolor='white', label='micro_F1_GuitarSet10')
-    bars2 = plt.bar(r2, macro_F1_guitarSet10, color='g', width=barWidth, edgecolor='white', label='macro_F1_GuitarSet10')
-    bars3 = plt.bar(r3, micro_F1_IDMT, color='r', width=barWidth, edgecolor='white', label='micro_F1_IDMT')
-    bars4 = plt.bar(r4, macro_F1_IDMT, color='c', width=barWidth, edgecolor='white', label='macro_F1_IDMT')
+    bars1 = plt.bar(r1, micro_F1_guitarSet10, color='cornflowerblue', width=barWidth, edgecolor='white', label='micro_F1_GuitarSet10')
+    bars2 = plt.bar(r2, macro_F1_guitarSet10, color='lightsteelblue', width=barWidth, edgecolor='white', label='macro_F1_GuitarSet10')
+    bars3 = plt.bar(r3, micro_F1_IDMT, color='seagreen', width=barWidth, edgecolor='white', label='micro_F1_IDMT')
+    bars4 = plt.bar(r4, macro_F1_IDMT, color='mediumseagreen', width=barWidth, edgecolor='white', label='macro_F1_IDMT')
 
     # Adding the scores on top of the bars
     for bars in [bars1, bars2, bars3, bars4]:
@@ -96,11 +95,9 @@ def benchmark(scores):
 
 
     plt.title('Micro and Macro F1 Scores for Models')
-    plt.xlabel('Model', fontweight='bold')
-    plt.ylabel('Score', fontweight='bold')
+    plt.xlabel('Benchmark Model', fontweight='bold')
     plt.xticks([r + barWidth for r in range(len(models))], models)
     plt.legend()
-
     plt.show()
 
 
@@ -189,5 +186,3 @@ if __name__ == "__main__":
 
     # Visualize validation and training loss
     visualize_loss(training_loss_test, validation_loss_test)
-
-
