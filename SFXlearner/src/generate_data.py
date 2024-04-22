@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from tqdm import tqdm
 from collections import OrderedDict
 from itertools import combinations, product
+import resampy
 
 LIST_SUPPORT_SFX = [
     "distortion",
@@ -173,6 +174,9 @@ def slice_idmt_smt_guitar(data_home, save_dir, duration=5):
     os.mkdir(os.path.join(save_dir, folder_name))
     for track in tqdm(track_list):
         audio, sr = sf.read(track)
+        target_sample_rate = 16000
+        audio = resampy.resample(audio, sr, target_sample_rate)
+        sr = target_sample_rate
         if len(audio) < (5 + duration) * sr:  # first 5s of this dataset is usually 0
             continue
         if sr != 16000:
@@ -813,7 +817,7 @@ def generate_dataset_sox(
 
     # generation start
     output_full_path = os.path.join(
-        output_dir, f"gen_multiFX_{datetime.now().strftime('%m%d%Y')}"
+        output_dir, "gen_multiFX"
     )
     os.makedirs(output_full_path)
     print("=> Settings:")

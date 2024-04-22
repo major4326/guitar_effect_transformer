@@ -3,72 +3,119 @@ from sklearn.preprocessing import label_binarize
 from sklearn.metrics import multilabel_confusion_matrix
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
-from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+import re
+import os
  
 
+def parse_transformer_metrics(path, metric):
+    """
+    Parse a metric from a logs.txt file
+    """
+    metrics = []
+
+    pattern_str = f"'{metric}': " + r"(\d+\.\d+)"
+    pattern = re.compile(pattern_str)
+
+    with open(path, 'r') as log_file:
+        log_lines = log_file.readlines()
+        for line in log_lines:
+            pattern_match = pattern.search(line)            
+            if pattern_match:
+                metrics.append(float(pattern_match.group(1)))
+
+    return metrics
+
+
+def get_transformer_predictions(folder_path, dataset):
+    """
+    Return actual and predicted instanced on a given dataset
+    """
+    loaded_valid_actual = np.loadtxt(os.path.join(folder_path, f'{dataset}_actual.txt')).astype(int)
+    loaded_valid_predicted = np.loadtxt(os.path.join(folder_path, f'{dataset}_predicted.txt')).astype(int)
+    return loaded_valid_actual.tolist(), loaded_valid_predicted.tolist()
+
+
 def visualize_confusion_matrix(data, f1_scores):
+    """
+    Plot a multi-label confusion matrix
+    """
     tags = list(data.keys())
 
-    fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(14, 14))
+    fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(5, 6))
 
-    # Remove the subplots which are not used
     for i in range(13, 16):
         fig.delaxes(axes.flatten()[i])
 
     for ax, tag, f1_score in zip(axes.flatten(), tags, f1_scores):
         conf_mat = data[tag]
         
-        # Show the confusion matrix
-        ax.matshow(conf_mat, cmap=plt.cm.Blues, alpha=0.3)
+        ax.matshow(conf_mat, cmap=plt.cm.Blues, alpha=0.6)
         for i in range(conf_mat.shape[0]):
             for j in range(conf_mat.shape[1]):
-                # Only annotate cells with numbers other than 0
                 if conf_mat[i, j] > 0:
                     ax.text(x=j, y=i, s=conf_mat[i, j], 
-                            va='center', ha='center', size='xx-large')
+                            va='center', ha='center', size='x-small')
 
-        # Title with F1 score
-        ax.set_title(f'F1: {f1_score:.2f}', fontsize=9, pad=2)
+        ax.set_title(f'F1: {f1_score:.2f}', fontsize=7, pad=2)
 
-        # Disable x and y ticks
         ax.set_xticks([])
         ax.set_yticks([])
 
-        # Label below the matrix
-        ax.set_xlabel(tag, fontsize=9, fontweight='bold')
+        ax.set_xlabel(tag, fontsize=7, fontweight='bold')
 
-    # Adjust layout to fit everything more tightly
-    plt.subplots_adjust(wspace=0.4, hspace=0.6)
+    plt.subplots_adjust(wspace=0.3, hspace=0.3)
+    plt.show()
+
+
+def visualize_f1_curve(f1_scores, steps_per_epoch=16):
+    """
+    Plot F1 curves over a certain number of epochs
+    """
+    plt.figure(figsize=(10, 6))  
+    epochs = [step / steps_per_epoch for step in range(1, len(f1_scores) + 1)]
+    
+    plt.plot(epochs, f1_scores, label='F1-score', color="#B33C3C")
+
+    plt.xlabel('Epoch', fontdict={'size': 12, 'weight': 'bold'}, fontsize=12)  
+    plt.ylabel('F1-score', fontdict={'size': 12, 'weight': 'bold'}, fontsize=12)
+
+    plt.grid(True)
+    plt.tick_params(axis='x', labelsize=10)
+    plt.tick_params(axis='y', labelsize=10)
 
     plt.show()
     
- 
 
-def visualize_loss(train_losses, validation_losses):
-    plt.figure(figsize=(10, 6))  # Optionally set the figure size
-    epochs = range(1, len(train_losses) + 1)
-    plt.plot(epochs, train_losses, label='Training Loss')
-    plt.plot(epochs, validation_losses, label='Validation Loss')
+def visualize_loss(train_losses, validation_losses, steps_per_epoch=16):
+    """
+    Plot training loss and validation loss over a certain number of epochs
+    """
+    plt.figure(figsize=(10, 6)) 
+    epochs = [step / steps_per_epoch for step in range(1, len(train_losses) + 1)]
+    
+    plt.plot(epochs, train_losses, label='Training Loss', color="cornflowerblue")
+    plt.plot(epochs, validation_losses, label='Validation Loss', color="seagreen")
 
-    # Add a title and labels to the axes.
-    plt.title('Training and Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
+    plt.xlabel('Epoch', fontdict={'size': 12, 'weight': 'bold'}, fontsize=12)  
+    plt.ylabel('Loss', fontdict={'size': 12, 'weight': 'bold'}, fontsize=12)
 
-    # Add a legend to clarify which line is which.
-    plt.legend()
+    plt.legend(prop={'size': 12}) 
 
-    # Optionally set a grid and the style of the plot
     plt.grid(True)
-    plt.style.use('ggplot')
 
-    # Display the plot.
+    plt.tick_params(axis='x', labelsize=10)
+    plt.tick_params(axis='y', labelsize=10)
+
     plt.show()
 
+
 def benchmark(scores):
+    """
+    Plot graph displaying comparing F1-micro and F1-macro scores on the validation set (guitarset) and test set (idmt-smt-guitar).
+    The models compared are resnet18, CRNN, Audio Spectrogram Transformer (ast) and wav2vec-2
+    """
     models = list(scores.keys())
     micro_F1_guitarSet10 = [score[0] for score in scores.values()]
     macro_F1_guitarSet10 = [score[1] for score in scores.values()]
@@ -83,65 +130,40 @@ def benchmark(scores):
 
     plt.figure(figsize=(12, 8))
 
-    bars1 = plt.bar(r1, micro_F1_guitarSet10, color='b', width=barWidth, edgecolor='white', label='micro_F1_GuitarSet10')
-    bars2 = plt.bar(r2, macro_F1_guitarSet10, color='g', width=barWidth, edgecolor='white', label='macro_F1_GuitarSet10')
-    bars3 = plt.bar(r3, micro_F1_IDMT, color='r', width=barWidth, edgecolor='white', label='micro_F1_IDMT')
-    bars4 = plt.bar(r4, macro_F1_IDMT, color='c', width=barWidth, edgecolor='white', label='macro_F1_IDMT')
+    bars1 = plt.bar(r1, micro_F1_guitarSet10, color='cornflowerblue', width=barWidth, edgecolor='white', label='micro_F1_GuitarSet10')
+    bars2 = plt.bar(r2, macro_F1_guitarSet10, color='lightsteelblue', width=barWidth, edgecolor='white', label='macro_F1_GuitarSet10')
+    bars3 = plt.bar(r3, micro_F1_IDMT, color='seagreen', width=barWidth, edgecolor='white', label='micro_F1_IDMT')
+    bars4 = plt.bar(r4, macro_F1_IDMT, color='mediumseagreen', width=barWidth, edgecolor='white', label='macro_F1_IDMT')
 
-    # Adding the scores on top of the bars
     for bars in [bars1, bars2, bars3, bars4]:
         for bar in bars:
             yval = bar.get_height()
             plt.text(bar.get_x() + bar.get_width()/2.0, yval, round(yval, 2), ha='center', va='bottom') 
 
-
     plt.title('Micro and Macro F1 Scores for Models')
-    plt.xlabel('Model', fontweight='bold')
-    plt.ylabel('Score', fontweight='bold')
+    plt.xlabel('Benchmark Model', fontweight='bold')
     plt.xticks([r + barWidth for r in range(len(models))], models)
     plt.legend()
-
     plt.show()
 
 
 def calculate_confusion_matrices(actuals, predictions, labels):
     """
     Calculate confusion matrices for a multi-label classification
-    
-    Parameters:
-    - actuals: a list or a numpy array of actual label vectors
-    - predictions: a list or a numpy array of predicted label vectors
-    - labels: a list of class labels
-    
-    Returns:
-    - cm_dict: a dictionary with class labels as keys and corresponding confusion matrix as values
     """
     
     # Calculate confusion matrix using scikit-learn for each label
     cms = multilabel_confusion_matrix(actuals, predictions)
     
-    # pack into a dictionary with labels as keys
+    # Pack into a dictionary with labels as keys
     cm_dict = {label: cm for label, cm in zip(labels, cms)}
     
     return cm_dict
 
+
 def f1_score_per_label(y_true, y_pred, labels):
     """
     Calculates F1 score per label
-    
-    Parameters:
-    y_true: array-like of shape (n_samples,)
-        True labels.
-    
-    y_pred: array-like of shape (n_samples,)
-        Predicted labels.
-    
-    labels: array-like of shape (n_classes,)
-        An array of all possible labels.
-    
-    Returns:
-    scores: dict
-        A dictionary with labels as keys and their F1 score as values.
     """
     # Convert labels to binary format for multi-label classification
     y_true_binary = label_binarize(y_true, classes=labels)
@@ -155,39 +177,37 @@ def f1_score_per_label(y_true, y_pred, labels):
 
     return scores
 
+
 if __name__ == "__main__":
-    # Declare actual and predicted labels + label names
-    actual_test = [
-    [1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0], 
-    [0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1], 
-    [1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0], 
-    [0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1]]
-    predicted_test = [
-    [1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0], 
-    [0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0], 
-    [1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0], 
-    [0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0]]
-    training_loss_test = [2.3, 1.98, 1.76, 1.62, 1.4, 1.3, 1.2, 1.1, 1.05, 1.0]
-    validation_loss_test = [2.5, 2.2, 2.0, 1.8, 1.8, 1.7, 1.6, 1.6, 1.55, 1.5]
+    # Names of all 13 labels
+    label_names = ["overdrive", "distortion", "chorus", "flanger", "phaser", "tremolo", "reverb", "feedback delay", "slapback delay", "low boost", "low reduct", "high boost", "high reduct"]
+
+    # AST metrics
+    ast_logs_path = "AST/logs.txt"
+    ast_train_losses = parse_transformer_metrics(ast_logs_path, "train_loss")
+    ast_valid_losses = parse_transformer_metrics(ast_logs_path, "eval_loss")
+    ast_f1_micro = parse_transformer_metrics(ast_logs_path, "eval_f1_micro")
+    ast_f1_macro = parse_transformer_metrics(ast_logs_path, "eval_f1_macro")
+    ast_actual, ast_predicted = get_transformer_predictions("AST/predictions", "valid")
+
+    # Benchmark scores
     scores_test = {
     "resnet18": (0.85, 0.80, 0.88, 0.84),
     "CRNN": (0.80, 0.75, 0.90, 0.82),
     "audio_spectrogram_transformer": (0.83, 0.79, 0.87, 0.82),
     "wav2vec": (0.87, 0.83, 0.91, 0.86),
     }   
-    label_names = ["overdrive", "distortion", "chorus", "flanger", "phaser", "tremolo", "reverb", "feedback delay", "slapback delay", "low boost", "low reduct", "high boost", "high reduct"]
 
-    # Calculate f1 per label and confusion matrix
-    f1_dict = f1_score_per_label(actual_test, predicted_test, label_names)
-    matrices = calculate_confusion_matrices(actual_test, predicted_test, label_names)
-    #TODO: Visualize confusion matrix
+    # Compute multi-label confusion matrix for AST
+    f1_dict = f1_score_per_label(ast_actual, ast_predicted, label_names)
+    matrices = calculate_confusion_matrices(ast_actual, ast_predicted, label_names)
+
+    # Plot loss and f1 for AST
     visualize_confusion_matrix(matrices, f1_dict.values())
+    visualize_loss(ast_train_losses, ast_valid_losses)
+    visualize_f1_curve(ast_f1_micro)
 
-    # Make a visualization of benchmark table (microF1 and macroF1 for guitarset10 and IDMT)
-    #TODO: Visualize benchmark
+    # Plot benchmark
     benchmark(scores_test)
 
-    # Visualize validation and training loss
-    visualize_loss(training_loss_test, validation_loss_test)
-
-
+    
